@@ -58,7 +58,26 @@ app.get('/api/users', (req, res) => {
     .catch((err) => console.log(err))
 });
 
-
+app.post('/api/users/:_id/exercises', async (req, res) => {
+  const userId = req.params._id;
+  let username;
+  const description = req.body.description;
+  const duration = req.body.duration;
+  const date = req.body.date != "" ? new Date(req.body.date) : new Date();
+  dateString = date.toDateString();
+  await User.findOne({ _id: userId })
+    .then((data) => { username = data.username })
+    .catch((err) => { res.status(500).json({ error: err }) });
+  const newExercise = new Exercise({
+                          userId: userId, 
+                          description: description,
+                          duration: duration,
+                          date: dateString,
+                          dateD: date
+                          });
+  newExercise.save();
+  res.json({"_id": userId,"username": username,"date": dateString,"duration": duration,"description": description})
+});
 
 
 const listener = app.listen(process.env.PORT || 3000, () => {
