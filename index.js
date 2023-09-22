@@ -43,11 +43,17 @@ app.get('/', (req, res) => {
   res.sendFile(__dirname + '/views/index.html')
 });
 
-app.post('/api/users', (req, res) => {
+app.post('/api/users', async (req, res) => {
   const username = req.body.username;
   const newUser = new User({username: username});
-  newUser.save();
-  res.json({ username: username, _id: newUser._id})
+  try {
+    await newUser.save();
+    res.json({ username: username, _id: newUser._id});
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to create user"})
+  }
+
 });
 
 app.get('/api/users', (req, res) => {
@@ -60,23 +66,35 @@ app.get('/api/users', (req, res) => {
 
 app.post('/api/users/:_id/exercises', async (req, res) => {
   const userId = req.params._id;
-  let username;
   const description = req.body.description;
-  const duration = req.body.duration;
-  const date = req.body.date != "" ? new Date(req.body.date) : new Date();
-  dateString = date.toDateString();
-  await User.findOne({ _id: userId })
-    .then((data) => { username = data.username })
-    .catch((err) => { res.status(500).json({ error: err }) });
-  const newExercise = new Exercise({
-                          userId: userId, 
-                          description: description,
-                          duration: duration,
-                          date: dateString,
-                          dateD: date
-                          });
-  newExercise.save();
-  res.json({"_id": userId,"username": username,"date": dateString,"duration": duration,"description": description})
+  const duration = parseInt(req.body.duration);
+  const date = req.body.date ? new Date(req.body.date) : new Date();
+  const dateString = date.toDateString();
+  
+  try {
+    const user = await User.findOne({ _id: userId });
+    if (!user) return res.status(404).json({ error: "User not found." });
+
+    const newExercise = new Exercise({
+      userId: userId,
+      description: description,
+      duration: duration,
+      date: dateString,
+      dateD: date
+    });
+    await newExercise.save();
+
+    res.json({
+      _id: userId,
+      username: user.username,
+      date: dateString,
+      duration: duration,
+      description: description
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to add exercise." });
+  }
 });
 
 app.get('/api/users/:_id/logs', async (req, res) => {
